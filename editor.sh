@@ -68,7 +68,7 @@ done
 #===========================================================================
 start=`grep -F -a -b -m 1 --only-matching '070701' $unzipped_cpio | head -1 | cut -f 1 -d :`
 end=`dd if=$unzipped_cpio bs=$start skip=1 | pax -v | tail -1 | cut -f 3 -d , | awk '{ print $1 }'`
-if [ "$start" = "" -o "$end" = "" -o ]; then
+if [ "$start" == "" -o "$end" == "" -o $start -gt $end ]; then
 	printerr("Could not detect a CPIO Archive!")
 	exit
 fi
@@ -91,33 +91,25 @@ dd if=$kernel bs=$start count=1 of=$head_image
 printhl("Making a tail.img ( from $end ~ $filesize )")
 dd if=$kernel bs=$end skip=1 of=$tail_image
 
-# Check the new ramdisk's size
-ramdsize=`ls -l $new_ramdisk | awk '{print $5}'`
-printhl("The size of the new ramdisk is $ramdsize and the old ramdisk is $count"
-
-if [ $ramdsize -gt $count ]; then
-	printhl("The new ramdisk is bigger than the old -- taking steps to reduce the size")
-	if [ "gzip" != "`file $new_ramdisk | awk '{print $2}'`" ]; then
-		printhl("ramdisk is not gzipped, gzipping it...")
-		gzip -9 $new_ramdisk > out/ramdisk.gz
-	else
-		cp $new_ramdisk out/ramdisk.gz
-	fi
-	ramdsize=`ls -l out/ramdisk.gz | awk '{print $5}'`
-	if [ $ramdsize -gt $count ]; then
-		printerr("New ramdisk is bigger than old ramdisk - using lzma to compress it further..."
-		gunzip -c out/ramdisk.gz | lzma -f -9 > $ramdisk_image
-		ramdsize=`ls -l out/ramdisk.cpio | awk '{print $5}'`
-		if [ $ramdsize -gt $count ]; then
-			printerr("New ramdisk is still too big. Repack failed. $ramdsize > $count"
-			exit
-		fi
-	else
-		cp out/ramdisk.gz $ramdisk_image
-	fi
-else
-	cp $new_ramdisk $ramdisk_image
+if [ "gzip" == "`file $new_ramdisk | awk '{print $2}'`" ]; then
+	gunzip $new_ramdisk > out/tempramdisk
+	$new_ramdisk=./out/tempramdisk
 fi
+
+toobig="TRUE"
+for method in "cat" "gzip -9" "lzma -f -9"; do
+	$method $new_ramdisk > $ramdisk_image
+	ramdsize=`ls -l $ramdisk_image | awk '{print $5}'`
+		if [ $ramdsize -le $count ]; then
+			toobig="FALSE"
+			break;
+		fi
+done
+
+if [ "$toobig" == "TRUE" ]; then
+	printerr("New ramdisk is still too big. Repack failed. $ramdsize > $count"
+	exit
+done
 
 cat $head_image $ramdisk_image > out/franken.img
 franksize=`ls -l out/franken.img | awk '{print $5}'`
