@@ -97,7 +97,7 @@ printhl("The size of the new ramdisk is $ramdsize and the old ramdisk is $count"
 
 if [ $ramdsize -gt $count ]; then
 	printhl("The new ramdisk is bigger than the old -- taking steps to reduce the size")
-	if [ "gzip" != "`file $new_ramdisk`" ]; then
+	if [ "gzip" != "`file $new_ramdisk | awk '{print $2}'`" ]; then
 		printhl("ramdisk is not gzipped, gzipping it...")
 		gzip -9 $new_ramdisk > out/ramdisk.gz
 	else
