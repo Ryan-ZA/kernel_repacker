@@ -6,6 +6,7 @@
 # you should point where your cross-compiler is                                                                                 #
 COMPILER=~/x-tools/arm-z4-linux-gnueabi/bin/arm-z4-linux-gnueabi
 FINDZEROS=~/findzeros/findzeros
+RESOURCES=~/kernel_repacker/resources
 ##############################################################################
 
 zImage=$1
@@ -109,13 +110,15 @@ if [ "gzip" == "`file $new_ramdisk | awk '{print $2}'`" ]; then
 fi
 
 toobig="TRUE"
-for method in "cat" "gzip -9" "lzma -f -9"; do
+for method in "cat" "gzip -f9c" "lzma -f9c"; do
 	$method $new_ramdisk > $ramdisk_image
 	ramdsize=`ls -l $ramdisk_image | awk '{print $5}'`
-		if [ $ramdsize -le $count ]; then
-			toobig="FALSE"
-			break;
-		fi
+	printhl "Current ramdsize using $method : $ramdsize with required size : $count"
+	if [ $ramdsize -le $count ]; then
+		printhl "$method accepted!"
+		toobig="FALSE"
+		break;
+	fi
 done
 
 if [ "$toobig" == "TRUE" ]; then
@@ -142,6 +145,8 @@ fi
 # rebuild zImage
 #============================================
 printhl "Now we are rebuilding the zImage"
+
+cp -r $RESOURCES ./
 
 cd resources/2.6.29
 cp ../../out/new_Image arch/arm/boot/Image
@@ -174,4 +179,4 @@ $COMPILER-objcopy -O binary -R .note -R .note.gnu.build-id -R .comment -S  arch/
 printhl "Cleaning up..."
 mv arch/arm/boot/zImage ../../new_zImage
 rm arch/arm/boot/compressed/vmlinux arch/arm/boot/compressed/piggy.o arch/arm/boot/compressed/misc.o arch/arm/boot/compressed/head.o arch/arm/boot/compressed/piggy.gz arch/arm/boot/Image
-rm -rf ../../out
+#rm -rf ../../out

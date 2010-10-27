@@ -1,0 +1,7 @@
+Kernel Repacker
+Original Idea by dkcldark
+Cleaned and improved by RyanZA
+
+Remember to set the options for your system at the top of editor.sh
+
+Requires findzeros binary for speed, compile with 'gcc findzeros.c -o findzeros'
